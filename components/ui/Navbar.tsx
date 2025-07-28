@@ -1,5 +1,6 @@
 'use client'
 import { Menu, Wallet, X } from 'lucide-react'
+import Link from 'next/link'
 import { useState } from 'react'
 
 function Navbar() {
@@ -9,44 +10,44 @@ function Navbar() {
 		<nav className="bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-50">
 			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 				<div className="flex justify-between items-center h-16">
-					<div className="flex items-center">
+					<Link href="/" className="flex items-center">
 						<Wallet className="h-8 w-8 text-blue-600" />
 						<span className="ml-2 text-xl font-bold text-gray-900">
 							BlockRemit
 						</span>
-					</div>
+					</Link>
 
 					{/* Desktop Navigation */}
 					<div className="hidden md:flex items-center space-x-8">
-						<a
+						<Link
 							href="#features"
 							className="text-gray-600 hover:text-blue-600 transition-colors font-medium"
 						>
 							Features
-						</a>
-						<a
+						</Link>
+						<Link
 							href="#comparison"
 							className="text-gray-600 hover:text-blue-600 transition-colors font-medium"
 						>
 							Comparison
-						</a>
-						<a
+						</Link>
+						<Link
 							href="#about"
 							className="text-gray-600 hover:text-blue-600 transition-colors font-medium"
 						>
 							About
-						</a>
+						</Link>
 						<div className="h-6 w-px bg-gray-300"></div>
-						<a href="/login">
+						<Link href="/login">
 							<button className="px-4 py-2 text-gray-700 hover:text-blue-600 font-medium transition-colors">
 								Sign In
 							</button>
-						</a>
-						<a href="/register">
+						</Link>
+						<Link href="/register">
 							<button className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
 								Get Started
 							</button>
-						</a>
+						</Link>
 					</div>
 
 					{/* Mobile menu button */}
