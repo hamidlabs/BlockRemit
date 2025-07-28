@@ -11,57 +11,127 @@ export async function registerUser(data: {
 	country: string
 }) {
 	try {
-		// First, create user via BetterAuth
-		const authResponse = await auth.api.signUpEmail({
-			body: {
-				email: data.email,
-				password: data.password,
-				name: data.name,
-			},
-			asResponse: true,
+		console.log('Starting registration for:', data.email)
+
+		// First check if user already exists in our database
+		let user = await prisma.user.findUnique({
+			where: { email: data.email },
+			include: { balances: true },
 		})
 
-		if (!authResponse.ok) {
-			const errorData = await authResponse.json()
-			return {
-				success: false,
-				error: errorData.message || 'Failed to create auth account',
+		let authData = null
+
+		if (!user) {
+			// User doesn't exist, create via BetterAuth
+			console.log('User not found, creating new user...')
+
+			const authResponse = await auth.api.signUpEmail({
+				body: {
+					email: data.email,
+					password: data.password,
+					name: data.name,
+				},
+				asResponse: true,
+			})
+
+			console.log('Auth response:', authResponse)
+
+			if (!authResponse.ok) {
+				const errorData = await authResponse.json()
+				console.log('Auth failed:', errorData)
+				return {
+					success: false,
+					error: errorData.message || 'Failed to create auth account',
+				}
 			}
+
+			authData = await authResponse.json()
+			console.log('Auth response:', authData)
+			console.log('Auth successful, user created')
+
+			// Wait for user to be available in database
+			for (let i = 0; i < 10; i++) {
+				user = await prisma.user.findUnique({
+					where: { email: data.email },
+					include: { balances: true },
+				})
+				if (user) {
+					console.log('Found user:', user.id)
+					break
+				}
+				console.log(`User not found, attempt ${i + 1}/10, waiting...`)
+				await new Promise(resolve => setTimeout(resolve, 200))
+			}
+
+			if (!user) {
+				console.log('User not found after 10 attempts')
+				return {
+					success: false,
+					error: 'User was created but not found in database',
+				}
+			}
+		} else {
+			console.log('User already exists:', user.id)
 		}
 
-		const authData = await authResponse.json()
+		// Generate wallet and keys if not already set
+		const walletAddress = user.walletAddress || generateWalletAddress()
+		const { privateKey, publicKey } =
+			user.publicKey && user.privateKey
+				? { privateKey: user.privateKey, publicKey: user.publicKey }
+				: generateKeyPair()
 
-		// Generate wallet and keys
-		const walletAddress = generateWalletAddress()
-		const { privateKey, publicKey } = generateKeyPair()
+		console.log('Using wallet and keys')
 
-		// Create or update user in our database with wallet information
-		const user = await prisma.user.update({
-			where: { email: data.email },
+		// Update the user with additional fields
+		const updatedUser = await prisma.user.update({
+			where: { id: user.id },
 			data: {
-				name: data.name,
 				country: data.country,
 				walletAddress,
 				publicKey,
 				privateKey,
-				balances: {
-					create: [
-						{ currency: 'USD', amount: Math.random() * 5000 + 5000 },
-						{ currency: 'EUR', amount: Math.random() * 3000 + 1000 },
-						{ currency: 'GBP', amount: Math.random() * 3000 + 1000 },
-						{ currency: 'JPY', amount: Math.random() * 300000 + 100000 },
-					],
-				},
 			},
+		})
+		console.log('Updated user with wallet info')
+
+		// Create balances if they don't exist
+		if (!user.balances || user.balances.length === 0) {
+			console.log('Creating balances for user:', updatedUser.id)
+
+			const balancesData = [
+				{ userId: updatedUser.id, currency: 'USD', amount: 7500.0 },
+				{ userId: updatedUser.id, currency: 'EUR', amount: 2500.0 },
+				{ userId: updatedUser.id, currency: 'GBP', amount: 2000.0 },
+				{ userId: updatedUser.id, currency: 'JPY', amount: 250000.0 },
+			]
+
+			await prisma.balance.createMany({
+				data: balancesData,
+			})
+			console.log('Balances created successfully')
+		} else {
+			console.log('User already has balances:', user.balances.length)
+		}
+
+		// Fetch the complete user with balances
+		const userWithBalances = await prisma.user.findUnique({
+			where: { id: updatedUser.id },
 			include: {
 				balances: true,
 			},
 		})
 
-		return { success: true, user, authData }
-	} catch (error) {
-		console.error('Error creating user:', error)
-		return { success: false, error: 'Failed to create user account' }
+		console.log('Final user with balances:', {
+			id: userWithBalances?.id,
+			email: userWithBalances?.email,
+			balanceCount: userWithBalances?.balances?.length,
+		})
+
+		return { success: true, user: userWithBalances, authData }
+	} catch (error: any) {
+		console.error('Error in registerUser:', error)
+		return { success: false, error: `Registration failed: ${error.message}` }
 	}
 }
 

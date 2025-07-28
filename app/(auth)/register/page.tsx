@@ -1,7 +1,6 @@
 'use client'
 
 import { registerUser } from '@/app/actions/auth'
-import { signUp } from '@/lib/auth-client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -36,19 +35,7 @@ export default function RegisterPage() {
 		setError('')
 
 		try {
-			// Register with Better Auth
-			const authResult = await signUp.email({
-				email: formData.email,
-				password: formData.password,
-				name: formData.name,
-			})
-
-			if (authResult.error) {
-				setError(authResult.error.message || 'Registration failed')
-				return
-			}
-
-			// Create user in our database with wallet
+			// Register user with complete setup (auth + database + wallet + balances)
 			const result = await registerUser({
 				name: formData.name,
 				email: formData.email,
@@ -59,9 +46,10 @@ export default function RegisterPage() {
 			if (result.success) {
 				router.push('/transactions')
 			} else {
-				setError(result.error || 'Failed to create user profile')
+				setError(result.error || 'Failed to create user account')
 			}
 		} catch (err) {
+			console.error('Registration error:', err)
 			setError('An error occurred during registration')
 		} finally {
 			setIsLoading(false)
