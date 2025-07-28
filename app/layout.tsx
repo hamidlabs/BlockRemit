@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-	title: 'Blockchain Remittance',
+	title: 'BlockRemit',
 	description: 'A Potential Alternative to SWIFT for Cross-Border Payments',
 }
 

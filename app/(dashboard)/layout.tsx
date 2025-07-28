@@ -22,7 +22,7 @@ import {
 	Wallet,
 } from 'lucide-react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { redirect, usePathname } from 'next/navigation'
 import { signOut, useSession } from '../../lib/auth-client'
 
 export default function DashboardLayout({
@@ -106,8 +106,8 @@ export default function DashboardLayout({
 							<DropdownMenu>
 								<DropdownMenuTrigger asChild>
 									<Button
-										variant="ghost"
-										className="flex items-center space-x-2 h-10 px-2"
+										variant="outline"
+										className="flex items-center space-x-2 h-13"
 									>
 										<Avatar className="h-8 w-8">
 											<AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white text-sm font-medium">
@@ -147,7 +147,10 @@ export default function DashboardLayout({
 									</DropdownMenuItem>
 									<DropdownMenuSeparator />
 									<DropdownMenuItem
-										onClick={() => signOut()}
+										onClick={() => {
+											signOut()
+											redirect('/')
+										}}
 										className="text-red-600"
 									>
 										<LogOut className="mr-2 h-4 w-4" />
