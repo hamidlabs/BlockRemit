@@ -15,7 +15,7 @@ model User {
   emailVerified Boolean
   image         String?
   country       String    @default("") //
-  walletAddress String    @unique @default("") //
+  walletAddress String    @unique @default(uuid()) //
   publicKey     String    @default("") //
   privateKey    String    @default("") //
   createdAt     DateTime
