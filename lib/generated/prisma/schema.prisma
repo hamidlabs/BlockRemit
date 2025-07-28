@@ -14,6 +14,10 @@ model User {
   email         String
   emailVerified Boolean
   image         String?
+  country       String    @default("") //
+  walletAddress String    @unique @default("") //
+  publicKey     String    @default("") //
+  privateKey    String    @default("") //
   createdAt     DateTime
   updatedAt     DateTime
   sessions      Session[]
