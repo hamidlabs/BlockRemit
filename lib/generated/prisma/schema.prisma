@@ -19,8 +19,60 @@ model User {
   sessions      Session[]
   accounts      Account[]
 
+  // Balances for different currencies
+  balances Balance[]
+
+  // Transactions sent
+  sentTransactions     Transaction[] @relation("SenderTransactions")
+  // Transactions received  
+  receivedTransactions Transaction[] @relation("ReceiverTransactions")
+
   @@unique([email])
   @@map("user")
+}
+
+model Balance {
+  id       String @id @default(cuid())
+  userId   String
+  currency String
+  amount   Float  @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, currency])
+  @@map("balances")
+}
+
+model Transaction {
+  id             String            @id @default(cuid())
+  txId           String            @unique
+  senderId       String
+  receiverId     String
+  amount         Float
+  sourceCurrency String
+  targetCurrency String
+  status         TransactionStatus @default(INITIATED)
+  exchangeRate   Float             @default(0)
+  settledAmount  Float             @default(0)
+  fee            Float             @default(0)
+  gasUsed        Float             @default(0)
+  signature      String?
+  blockHeight    Int?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  sender   User @relation("SenderTransactions", fields: [senderId], references: [id])
+  receiver User @relation("ReceiverTransactions", fields: [receiverId], references: [id])
+
+  @@map("transactions")
+}
+
+enum TransactionStatus {
+  INITIATED
+  VALIDATED
+  EXECUTED
+  SETTLED
+  FAILED
 }
 
 model Session {
