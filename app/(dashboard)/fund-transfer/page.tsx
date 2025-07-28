@@ -16,6 +16,13 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card'
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -32,6 +39,8 @@ import {
 	AlertCircle,
 	ArrowRight,
 	CheckCircle,
+	Clock,
+	Copy,
 	DollarSign,
 	Eye,
 	EyeOff,
@@ -56,6 +65,15 @@ type Balance = {
 	amount: number
 }
 
+type TransactionResult = {
+	success: boolean
+	transferTime: number
+	transactionId: string
+	amount: number
+	currency: string
+	recipient: string
+}
+
 export default function FundTransferPage() {
 	const [users, setUsers] = useState<User[]>([])
 	const [balances, setBalances] = useState<Balance[]>([])
@@ -68,6 +86,10 @@ export default function FundTransferPage() {
 		text: string
 	} | null>(null)
 	const [showWalletAddress, setShowWalletAddress] = useState(false)
+	const [showTransactionDialog, setShowTransactionDialog] = useState(false)
+	const [transactionResult, setTransactionResult] =
+		useState<TransactionResult | null>(null)
+	const [copied, setCopied] = useState(false)
 
 	const [transferData, setTransferData] = useState({
 		amount: '',
@@ -128,12 +150,14 @@ export default function FundTransferPage() {
 		selectedBalance &&
 		totalCost <= selectedBalance.amount
 
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault()
+	const handleSubmit = async () => {
 		if (!selectedUser || !canSubmit) return
 
 		setSubmitting(true)
 		setMessage(null)
+
+		// Record start time
+		const startTime = Date.now()
 
 		try {
 			const result = await createTransaction({
@@ -143,11 +167,30 @@ export default function FundTransferPage() {
 				targetCurrency: transferData.targetCurrency,
 			})
 
+			// Calculate transfer time
+			const endTime = Date.now()
+			const transferTime = (endTime - startTime) / 1000 // Convert to seconds
+
 			if (result.success) {
+				// Prepare transaction result for dialog
+				setTransactionResult({
+					success: true,
+					transferTime: transferTime,
+					transactionId: result.transaction?.id || `TX${Date.now()}`,
+					amount: transferAmount,
+					currency: transferData.sourceCurrency,
+					recipient: selectedUser.name,
+				})
+
+				// Show dialog
+				setShowTransactionDialog(true)
+
 				setMessage({
 					type: 'success',
 					text: 'Transaction initiated successfully! Funds will be transferred within seconds.',
 				})
+
+				// Reset form
 				setTransferData({
 					amount: '',
 					sourceCurrency: 'USD',
@@ -174,6 +217,18 @@ export default function FundTransferPage() {
 		}
 	}
 
+	const copyTransactionId = async () => {
+		if (transactionResult) {
+			try {
+				await navigator.clipboard.writeText(transactionResult.transactionId)
+				setCopied(true)
+				setTimeout(() => setCopied(false), 2000)
+			} catch (err) {
+				console.error('Failed to copy: ', err)
+			}
+		}
+	}
+
 	const getInitials = (name: string) => {
 		return name
 			.split(' ')
@@ -196,6 +251,30 @@ export default function FundTransferPage() {
 			Bangladesh: '🇧🇩',
 		}
 		return flags[country] || '🌍'
+	}
+
+	const formatTransferTime = (seconds: number) => {
+		if (seconds < 1) {
+			return `${Math.round(seconds * 1000)}ms`
+		} else if (seconds < 60) {
+			return `${seconds.toFixed(2)}s`
+		} else {
+			const minutes = Math.floor(seconds / 60)
+			const remainingSeconds = seconds % 60
+			return `${minutes}m ${remainingSeconds.toFixed(0)}s`
+		}
+	}
+
+	const getPerformanceBadge = (seconds: number) => {
+		if (seconds < 1) {
+			return { text: '⚡ Ultra Fast!', color: 'bg-green-100 text-green-800' }
+		} else if (seconds < 3) {
+			return { text: '🚀 Very Fast!', color: 'bg-blue-100 text-blue-800' }
+		} else if (seconds < 5) {
+			return { text: '✅ Fast', color: 'bg-yellow-100 text-yellow-800' }
+		} else {
+			return { text: '✓ Completed', color: 'bg-gray-100 text-gray-800' }
+		}
 	}
 
 	if (loading) {
@@ -242,6 +321,178 @@ export default function FundTransferPage() {
 
 	return (
 		<div className="space-y-8">
+			{/* Transaction Success Dialog */}
+			<Dialog
+				open={showTransactionDialog}
+				onOpenChange={setShowTransactionDialog}
+			>
+				<DialogContent className="sm:max-w-md bg-white">
+					<DialogHeader>
+						<DialogTitle className="flex items-center text-green-600">
+							<CheckCircle className="w-6 h-6 mr-2" />
+							Transaction Completed!
+						</DialogTitle>
+						<DialogDescription>
+							Your funds have been successfully transferred via blockchain
+						</DialogDescription>
+					</DialogHeader>
+
+					{transactionResult && (
+						<div className="space-y-6">
+							{/* Transfer Time Highlight */}
+							<div className="text-center p-6 bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 rounded-xl border border-green-200">
+								<div className="flex items-center justify-center mb-4">
+									<div className="bg-white p-3 rounded-full shadow-sm mr-3">
+										<Clock className="w-8 h-8 text-green-600" />
+									</div>
+									<div>
+										<p className="text-sm text-green-700 font-medium mb-1">
+											Transfer Time
+										</p>
+										<p className="text-4xl font-bold text-green-600">
+											{formatTransferTime(transactionResult.transferTime)}
+										</p>
+									</div>
+								</div>
+								<Badge
+									variant="secondary"
+									className={`${
+										getPerformanceBadge(transactionResult.transferTime).color
+									} border-0`}
+								>
+									{getPerformanceBadge(transactionResult.transferTime).text}
+								</Badge>
+							</div>
+
+							{/* Transaction Details */}
+							<div className="space-y-4">
+								<div className="flex items-center justify-between">
+									<h4 className="font-semibold text-slate-900">
+										Transaction Details
+									</h4>
+									<Badge
+										variant="outline"
+										className="bg-green-50 text-green-700 border-green-200"
+									>
+										<CheckCircle className="w-3 h-3 mr-1" />
+										Confirmed
+									</Badge>
+								</div>
+
+								<div className="space-y-3 p-4 bg-slate-50 rounded-lg">
+									<div className="flex justify-between items-center">
+										<span className="text-sm text-slate-600">
+											Transaction ID
+										</span>
+										<div className="flex items-center space-x-2">
+											<code className="text-xs bg-white px-2 py-1 rounded border font-mono">
+												{transactionResult.transactionId}
+											</code>
+											<Button
+												variant="ghost"
+												size="sm"
+												onClick={copyTransactionId}
+												className="h-6 w-6 p-0"
+											>
+												<Copy
+													className={`w-3 h-3 ${
+														copied ? 'text-green-600' : 'text-slate-400'
+													}`}
+												/>
+											</Button>
+										</div>
+									</div>
+
+									<Separator />
+
+									<div className="flex justify-between">
+										<span className="text-sm text-slate-600">Amount Sent</span>
+										<span className="font-semibold">
+											{formatCurrency(
+												transactionResult.amount,
+												transactionResult.currency,
+											)}
+										</span>
+									</div>
+
+									<div className="flex justify-between">
+										<span className="text-sm text-slate-600">Recipient</span>
+										<span className="font-semibold">
+											{transactionResult.recipient}
+										</span>
+									</div>
+
+									<div className="flex justify-between">
+										<span className="text-sm text-slate-600">Network Fee</span>
+										<span className="text-sm text-slate-500">
+											{formatCurrency(
+												transactionResult.amount * 0.001,
+												transactionResult.currency,
+											)}
+										</span>
+									</div>
+								</div>
+							</div>
+
+							{/* Action Buttons */}
+							<div className="flex space-x-3">
+								<Button
+									variant="outline"
+									className="flex-1"
+									onClick={() => setShowTransactionDialog(false)}
+								>
+									Close
+								</Button>
+								<Button
+									className="flex-1"
+									onClick={() => {
+										setShowTransactionDialog(false)
+										// Reset for another transaction
+									}}
+								>
+									<Send className="w-4 h-4 mr-2" />
+									Send Another
+								</Button>
+							</div>
+
+							{/* Performance Insight */}
+							<div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+								<div className="flex items-start space-x-3">
+									<div className="bg-blue-100 p-2 rounded-full">
+										<Zap className="w-4 h-4 text-blue-600" />
+									</div>
+									<div className="flex-1">
+										<p className="font-medium text-blue-900 text-sm mb-1">
+											{transactionResult.transferTime < 3
+												? 'Lightning Speed Achievement!'
+												: 'Blockchain Transfer Complete'}
+										</p>
+										<p className="text-xs text-blue-700 leading-relaxed">
+											{transactionResult.transferTime < 1
+												? 'Your transaction was processed in under a second - faster than traditional banking systems!'
+												: transactionResult.transferTime < 3
+												? 'Your transaction completed in record time thanks to our optimized blockchain infrastructure.'
+												: 'Your transaction has been successfully processed and confirmed on the blockchain network.'}
+										</p>
+									</div>
+								</div>
+							</div>
+
+							{copied && (
+								<div className="text-center">
+									<Badge
+										variant="secondary"
+										className="bg-green-100 text-green-800"
+									>
+										Transaction ID copied to clipboard!
+									</Badge>
+								</div>
+							)}
+						</div>
+					)}
+				</DialogContent>
+			</Dialog>
+
 			{/* Header */}
 			<div className="flex items-center justify-between">
 				<div>
@@ -454,7 +705,7 @@ export default function FundTransferPage() {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<form onSubmit={handleSubmit} className="space-y-6">
+						<div className="space-y-6">
 							{/* Amount Input */}
 							<div className="space-y-2">
 								<Label htmlFor="amount" className="text-sm font-medium">
@@ -629,7 +880,7 @@ export default function FundTransferPage() {
 
 							{/* Submit Button */}
 							<Button
-								type="submit"
+								onClick={handleSubmit}
 								disabled={!canSubmit || submitting}
 								className="w-full h-12 text-base font-medium"
 								size="lg"
@@ -669,7 +920,7 @@ export default function FundTransferPage() {
 									</div>
 								</div>
 							</div>
-						</form>
+						</div>
 					</CardContent>
 				</Card>
 			</div>
