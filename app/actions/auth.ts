@@ -129,9 +129,9 @@ export async function registerUser(data: {
 		})
 
 		return { success: true, user: userWithBalances, authData }
-	} catch (error: any) {
+	} catch (error) {
 		console.error('Error in registerUser:', error)
-		return { success: false, error: `Registration failed: ${error.message}` }
+		return { success: false, error: `Registration failed` }
 	}
 }
 

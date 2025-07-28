@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { signIn } from '@/lib/auth-client'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 
 export default function LoginPage() {
 	const [email, setEmail] = useState('')
@@ -37,7 +37,7 @@ export default function LoginPage() {
 
 	return (
 		<div className="min-h-screen flex items-center justify-center bg-gray-50">
-			<div className="max-w-md w-full space-y-8">
+			<div className="max-w-md w-full space-y-8 shadow-lg rounded-xl p-6">
 				<div>
 					<h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
 						Sign in to your account

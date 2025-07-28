@@ -512,7 +512,7 @@ export default function FundTransferPage() {
 										<SelectTrigger className="h-12">
 											<SelectValue />
 										</SelectTrigger>
-										<SelectContent>
+										<SelectContent className="bg-white">
 											{currencies.map(currency => (
 												<SelectItem key={currency.code} value={currency.code}>
 													<div className="flex items-center">
@@ -542,7 +542,7 @@ export default function FundTransferPage() {
 										<SelectTrigger className="h-12">
 											<SelectValue />
 										</SelectTrigger>
-										<SelectContent>
+										<SelectContent className="bg-white">
 											{currencies.map(currency => (
 												<SelectItem key={currency.code} value={currency.code}>
 													<div className="flex items-center">
